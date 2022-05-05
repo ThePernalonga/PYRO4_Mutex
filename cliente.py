@@ -70,8 +70,18 @@ class Cliente(object):
         print("Não há chave ainda!")
     elif resp == '3':
       if refConnec.isClientWithRec(PROCID):
-        print("Liberando recurso...")
-        
+        while True:
+          alter = input("\nQual você deseja liberar?\n1 - Coca-Cola\n2 - Pepsi\n")
+          if alter == '1':
+            print("Liberando recurso...")
+            refConnec.freeRec(COCA)
+            break
+          elif alter == '2':
+            print("Liberando recurso...")
+            refConnec.freeRec(PEPSI)
+            break
+          else:
+            print("\nOpção inválida!\n")
       else:
         print("Não é possível liberar o recurso, pois não é o dono!")
     elif resp == "4":
