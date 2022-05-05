@@ -69,7 +69,7 @@ class Servidor(object):
         print(REC1_FREE)
         print(f'>Processo {identifier} está livre!\n')
       else:
-        self.exit = Event()
+        self.exit.clear()
         IDENTIFIER1 = FILAREC1[0]
         print(f'>Processo {identifier} está em uso durante {value} segundos')
         while not self.exit.is_set():
