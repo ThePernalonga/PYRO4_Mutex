@@ -20,37 +20,43 @@ SIGN_PUB = ""
 TOKEN = [] # Vazio por enquanto
 PROCID = str(uuid.uuid1())[:8]
 
-ini = Pyro4.core.Proxy(URI)
-connec = ini.msgIni(PROCID)
+refConnec = Pyro4.core.Proxy(URI)
+connec = refConnec.msgIni(PROCID)
+
+COCA = 1
+PEPSI = 2
 
 class Cliente(object):
   
   print("Bem vindo ao sistema!\nVoce está conectado agora com " + OBJ)
 
+
+# Loop principal, checa se foi feita mesmo a conexão
   while True:
     if connec != 1:
       print("Erro ao conectar com o servidor!")
       break
     
-    resp = input("\n1 - Solicitar acesso ao recurso\n2 - Ver se há chave publica\n3 - Sair\n\n")
+    resp = input("\n1 - Solicitar acesso ao recurso\n2 - Ver se há chave publica\n3 - Liberar o Recurso\n4 - Sair\n\n")
     
-    if resp == "1":
-      alter = input("\n Qual você deseja solicitar?\n 1 - Coca-Cola\n 2 - Pepsi\n")
+    if resp == '1':
+      alter = input("\nQual você deseja solicitar?\n1 - Coca-Cola\n2 - Pepsi\n")
       
       while True:
-        if alter == "1":
+        if alter == '1':
           if SIGN_PUB != "":
-            SIGN_PUB = ini.get_public_key()
-          ini.AcessoRecurso(PROCID, "Coca")
+            SIGN_PUB = refConnec.get_public_key()
+          print(refConnec.AcessoRecurso(PROCID, COCA))
           alter = 0
           break
           
-        elif alter == "2":
+        elif alter == '2':
           if SIGN_PUB != "":
-            SIGN_PUB = ini.get_public_key()
-          ini.AcessoRecurso(PROCID, "Pepsi")
+            SIGN_PUB = refConnec.get_public_key()
+          print(refConnec.AcessoRecurso(PROCID, PEPSI))
           alter = 0
           break
+        
           
         else:
           print("\nOpção inválida!\n")
@@ -62,7 +68,13 @@ class Cliente(object):
         print(SIGN_PUB)
       else:
         print("Não há chave ainda!")
-    elif resp == "3":
+    elif resp == '3':
+      if refConnec.isClientWithRec(PROCID):
+        print("Liberando recurso...")
+        
+      else:
+        print("Não é possível liberar o recurso, pois não é o dono!")
+    elif resp == "4":
       break
     else:
       print("Comando inválido!")
