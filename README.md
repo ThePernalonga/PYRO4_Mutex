@@ -4,7 +4,7 @@ Implementation of a MiddleWare Pyro4 and a Mutual Exclusion
 ## Requirements:
 It's necessary these librareis installed:
 ```
-pip3 install Crypto
+pip3 install pycryptodome
 
 pip3 install Pyro4
 ```
