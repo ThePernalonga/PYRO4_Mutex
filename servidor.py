@@ -7,61 +7,101 @@
 
 # Pyro4 - comunicacao entre objetos de um cliente e servidor
 
-import Pyro4
-import uuid
+from logging.config import IDENTIFIER
 import sys
+
+import Pyro4
 import Crypto.Hash.SHA256
 import Crypto.PublicKey.RSA
 import Crypto.Random
+from time import sleep
+from threading import Thread
+from threading import Lock
 
 
 TOKEN = ["Coca-cola", "Pepsi"]
 SIGN_PUB = []
 SIGN_PRI = []
 
+TEMP_MAX = 5
+
+COCA = 1
+PEPSI = 2
+
+IDENTIFIER = ""
 REC1_FREE = True
 REC2_FREE = True
 
+FILAREC1 = []
+FILAREC2 = []
+
 PROC_NAME_LIST = []
 
-class servidor(object):
+class Servidor(object):
   
-  filaRec1 = []
-  filaRec2 = []
+  lock = Lock()
+  
+  @Pyro4.expose
+  def isClientWithRec(self, procid):
+    return procid == IDENTIFIER
+  
+  def task(self, lock, identifier, value):
+    global REC1_FREE, IDENTIFIER
+    with lock:
+      REC1_FREE = False
+      print(FILAREC1)
+      # IDENTIFIER = identifier
+      if len(FILAREC1) == 0:
+        IDENTIFIER = ""
+        REC1_FREE = True
+        print(REC1_FREE)
+        print(f'>Processo {identifier} está livre!\n')
+      else:
+        IDENTIFIER = FILAREC1[0]
+        print(f'>Processo {identifier} está em uso durante {value} segundos')
+        sleep(value)
+        FILAREC1.pop(0)
+        REC1_FREE = True
+        self.lock = Lock()
+        self.task(self.lock, IDENTIFIER, value)
+
   
   @Pyro4.expose
   def msgIni(self, name):
     print("Sua conexão foi estabelecida com sucesso! ID: " + name)
     PROC_NAME_LIST.append(name)
     return 1
-    
-  def get_recurso(self, tipo):
-    if tipo == "Coca":
-      if REC1_FREE == True:
-        REC1_FREE = False
-        return 1
-      else:
-        filaRec1.append(PROC_NAME_LIST[-1])
-      
-    
+
   @Pyro4.expose
-  def AcessoRecurso(self, name, tipo):
-    if tipo == "Coca":
-      return print("\ncoca")
-    elif tipo == "Pepsi":
-      return print("\npepsi")
-  
+  def AcessoRecurso(self, name, tipo: int):
+    global REC1_FREE
+    if tipo == COCA:
+      global FILAREC1
+      if REC1_FREE == True:
+        print(REC1_FREE)
+        FILAREC1.append(name)
+        Thread(target = self.task, args=(self.lock, name, TEMP_MAX)).start()
+      
+      elif REC1_FREE == False:
+        FILAREC1.append(name)
+        return "not not free"
+      
+      return "coca " + name
+    
+    elif tipo == PEPSI:
+      return "pepsi " + name
+
   def chavesPP():
     print("Gerando chaves...")
     SIGN_PUB = Crypto.PublicKey.RSA.generate(1024)
     SIGN_PRI = SIGN_PUB.exportKey()
     SIGN_PUB = SIGN_PUB.publickey().exportKey()
     return 1
-  
+
   @Pyro4.expose
   def get_public_key(self):
     return SIGN_PUB
-  
+
   print("Servidor iniciado!")
   try:
     inicio = chavesPP()
@@ -81,7 +121,7 @@ class servidor(object):
     
 
 daemon = Pyro4.Daemon()
-uri = daemon.register(servidor)
+uri = daemon.register(Servidor)
 print(uri)
 ns = Pyro4.locateNS()
 ns.register("Servidor", uri)
