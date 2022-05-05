@@ -17,18 +17,20 @@ import Crypto.Random
 from time import sleep
 from threading import Thread
 from threading import Lock
+from threading import Event
 
 
 TOKEN = ["Coca-cola", "Pepsi"]
 SIGN_PUB = []
 SIGN_PRI = []
 
-TEMP_MAX = 5
+TEMP_MAX = 10
 
 COCA = 1
 PEPSI = 2
 
-IDENTIFIER = ""
+IDENTIFIER1 = ""
+IDENTIFIER2 = ""
 REC1_FREE = True
 REC2_FREE = True
 
@@ -40,30 +42,44 @@ PROC_NAME_LIST = []
 class Servidor(object):
   
   lock = Lock()
+  exit = Event()
   
   @Pyro4.expose
   def isClientWithRec(self, procid):
-    return procid == IDENTIFIER
+    return procid == IDENTIFIER1
+  
+  @Pyro4.expose
+  def freeRec(self, rec):
+    if rec == COCA:
+      self.exit.set()
+    # elif rec == PEPSI:
+    #   self.lock.release()
+    else:
+      return -1
   
   def task(self, lock, identifier, value):
-    global REC1_FREE, IDENTIFIER
+    global REC1_FREE, IDENTIFIER1
     with lock:
       REC1_FREE = False
       print(FILAREC1)
       # IDENTIFIER = identifier
       if len(FILAREC1) == 0:
-        IDENTIFIER = ""
+        IDENTIFIER1 = ""
         REC1_FREE = True
         print(REC1_FREE)
         print(f'>Processo {identifier} está livre!\n')
       else:
-        IDENTIFIER = FILAREC1[0]
+        self.exit = Event()
+        IDENTIFIER1 = FILAREC1[0]
         print(f'>Processo {identifier} está em uso durante {value} segundos')
-        sleep(value)
+        while not self.exit.is_set():
+          self.exit.wait(value)
+          self.exit.set()
         FILAREC1.pop(0)
         REC1_FREE = True
         self.lock = Lock()
-        self.task(self.lock, IDENTIFIER, value)
+        self.task(self.lock, IDENTIFIER1, value)
+        
 
   
   @Pyro4.expose
@@ -74,7 +90,7 @@ class Servidor(object):
 
   @Pyro4.expose
   def AcessoRecurso(self, name, tipo: int):
-    global REC1_FREE
+    global REC1_FREE, REC2_FREE
     if tipo == COCA:
       global FILAREC1
       if REC1_FREE == True:
