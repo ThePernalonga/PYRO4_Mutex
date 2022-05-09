@@ -8,31 +8,52 @@
 # Pyro4 - comunicacao entre objetos de um cliente e servidor
 # uuid - gerador de identificadores univocos
 
+from threading import Thread
 import Pyro4
 import uuid
 
 OBJ = "Servidor" # Nome do objeto que deseja conectar
-
   
 URI = Pyro4.locateNS().lookup(OBJ)
+refConnec = Pyro4.core.Proxy(URI)
 
 SIGN_PUB = ""
 TOKEN = [] # Vazio por enquanto
 PROCID = str(uuid.uuid1())[:8]
-
-refConnec = Pyro4.core.Proxy(URI)
 connec = refConnec.msgIni(PROCID)
 
 COCA = 1
 PEPSI = 2
 
+class CallbackHandler(object):
+  @Pyro4.expose
+  @Pyro4.callback
+  def call1(self):
+    print("Callback recebido do servidor!")
+  
+  def loopThread(daemon):
+    daemon.requestLoop()
+    
+    
+
+daemon = Pyro4.core.Daemon()
+callback = CallbackHandler()
+daemon.register(callback)
+
+
 class Cliente(object):
   
   print("Bem vindo ao sistema!\nVoce está conectado agora com " + OBJ)
+  
+  # print(refConnec.doCallback(callback, "test"))
+  msg = Thread(target=CallbackHandler.loopThread, args=(daemon, ))
+  msg.setDaemon(True)
+  msg.start()
 
 
 # Loop principal, checa se foi feita mesmo a conexão
   while True:
+    refConnec.doCallback(callback)
     if connec != 1:
       print("Erro ao conectar com o servidor!")
       break
@@ -40,9 +61,9 @@ class Cliente(object):
     resp = input("\n1 - Solicitar acesso ao recurso\n2 - Ver se há chave publica\n3 - Liberar o Recurso\n4 - Sair\n\n")
     
     if resp == '1':
-      alter = input("\nQual você deseja solicitar?\n1 - Coca-Cola\n2 - Pepsi\n")
       
       while True:
+        alter = input("\nQual você deseja solicitar?\n1 - Coca-Cola\n2 - Pepsi\n")
         if alter == '1':
           if SIGN_PUB != "":
             SIGN_PUB = refConnec.get_public_key()
@@ -59,7 +80,7 @@ class Cliente(object):
         
           
         else:
-          print("\nOpção inválida!\n")
+          print("\nOpção inválida!")
         
           
       
@@ -82,10 +103,13 @@ class Cliente(object):
             break
           else:
             print("\nOpção inválida!\n")
+
       else:
         print("Não é possível liberar o recurso, pois não é o dono!")
     elif resp == "4":
+      refConnec.removeClient(PROCID)
       break
     else:
       print("Comando inválido!")
-      
+
+
