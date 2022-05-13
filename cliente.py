@@ -5,12 +5,14 @@
 #
 # Andre L. G. Santos 2090279
 
-from hashlib import sha256
-from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
-from threading import Thread
+import uuid
 import sys
 import Pyro4
-import uuid
+import base64
+from Crypto.Hash import SHA256
+from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
+from ast import Bytes
+from threading import Thread
 
 OBJ = "Servidor" # Nome do objeto que deseja conectar
 
@@ -23,7 +25,7 @@ SIGN_PUB = "" # Assinatura publica do servidor
 PROCID = str(uuid.uuid1())[:8] # Identificador do processo
 connec = refConnec.msgIni(PROCID) # Inicializa o processo
 
-VERI = []
+VERI = PKCS115_SigScheme # Verificador de assinatura
 
 # Identificacao de recurso
 COCA = 1
@@ -38,8 +40,17 @@ class CallbackHandler(object):
     
   @Pyro4.expose
   @Pyro4.callback
-  def notify(self, msg):
-    print(">Notificando Servidor: " + msg)
+  def notify(self, signature, hash, msg):
+    print(type(hash))
+    print(hash)
+    print(type(signature))
+    print(signature)
+    hash = base64.b64decode(hash)
+    try:
+      VERI.verify(hash, signature['data'])
+      print(">Notificando Servidor: " + msg)
+    except:
+      print(">Notificacao Falsa!")
   
   def loopThread(daemon):
     daemon.requestLoop()
@@ -80,7 +91,7 @@ class Cliente(object):
           if SIGN_PUB != "": # Checa se ja possui chave publica
             # global VERI
             SIGN_PUB = refConnec.get_public_key()
-            # VERI = PKCS115_SigScheme(SIGN_PUB)
+            VERI = PKCS115_SigScheme(SIGN_PUB)
           refConnec.iniCallbacks1(callback) # Coloca na fila o callback
           refConnec.AcessoRecurso(PROCID, COCA) # Solicita o recurso
           alter = 0
