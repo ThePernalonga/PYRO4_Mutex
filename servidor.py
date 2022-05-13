@@ -7,19 +7,21 @@
 
 import sys
 import Pyro4
+import base64
 import Crypto.Hash.SHA256
 import Crypto.PublicKey.RSA
 from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme as PKCS115
+# from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Hash import SHA256
 from threading import Thread, Lock, Event
 
 # Identificacao de chaves
-SIGNER = PKCS115
-SIGN_PUB = []
-SIGN_PRI = []
+SIGN_PRI = Crypto.PublicKey.RSA.generate(1024)
+SIGN_PUB = SIGN_PRI.publickey()
+SIGNER = PKCS115(SIGN_PRI)
 
 # Tempo maximo de acesso ao recurso
-TEMP_MAX = 10
+TEMP_MAX = 3
 
 # Identificacao de recurso
 COCA = 1
@@ -98,7 +100,15 @@ class Servidor(object):
           self.exit1.set()
         FILAREC1.pop(0)
         if len(CALLBACKS1) > 0 and len(FILAREC1) > 0:
-          CALLBACKS1[1].notify("Recurso Livre!")
+          BytesMSG = b'OK'
+          print(type(BytesMSG))
+          print(BytesMSG)
+          hash = SHA256.new(base64.b64encode(BytesMSG))
+          signature = PKCS115(SIGN_PRI).sign(hash)
+          print(type(hash.hexdigest()))
+          print(hash.hexdigest())
+          print(type(signature))
+          CALLBACKS1[1].notify(signature, base64.b64encode(hash) , 'Recurso Livre!')
         CALLBACKS1.pop(0)
         REC1_FREE = True
         self.lock1 = Lock()
@@ -178,8 +188,8 @@ class Servidor(object):
   # Funcao que gera chaves
   def chavesPP():
     print("Gerando chaves...")
-    SIGN_PRI = Crypto.PublicKey.RSA.generate(1024)
-    SIGN_PUB = SIGN_PRI.publickey()
+    # SIGN_PRI = Crypto.PublicKey.RSA.generate(1024)
+    # SIGN_PUB = SIGN_PRI.publickey()
     SIGNER = PKCS115(SIGN_PRI)
     return 1
 
